@@ -1,0 +1,164 @@
+{
+  "fields": {
+    "title":           { "analyzer": "english" },
+    "abstract":        { "analyzer": "english" },
+
+    "author_name":     { "analyzer": "person" },
+    "author_and_inst": { "analyzer": "person" },
+
+    "created": { "type": "date", "inputFormat": "yyyy-MM-dd'T'HH:mm:ss[.SSS][X]", "indexFormat": "yyyy-MM-dd" },
+    "updated": { "type": "date", "inputFormat": "yyyy-MM-dd'T'HH:mm:ss[.SSS][X]", "indexFormat": "yyyy-MM-dd" },
+
+    "set":      { "analyzer": "keyword" },
+    "category": { "analyzer": "keyword" },
+    "msc":      { "analyzer": "keyword" },
+    "acm":      { "analyzer": "keyword" },
+    "doi":      { "analyzer": "keyword" },
+
+    "id":       { "id": true, "analyzer": "literal" }
+  },
+
+  "analyzers" : {
+    "enum_text": {
+      "type" : "english",
+      "requireResources" : true,
+      "stopwords" : [ ],
+      "stemmerDictionary" : null,
+      "useHeuristicStemming" : false
+    },
+    "person": {
+      "type" : "english",
+      "requireResources" : true,
+      "stopwords" : [ ],
+      "stemmerDictionary" : null,
+      "useHeuristicStemming" : false
+    },
+    "institution": {
+      "type" : "english",
+      "requireResources" : true,
+      "stopwords" : [ ],
+      "stemmerDictionary" : null,
+      "useHeuristicStemming" : false
+    }
+  },
+
+  "source":  {
+    "feed":  {
+      "type":  "json-records",
+      "input":  {
+        "dir": "${input.dir:data/}",
+        "match": "*.{json,zip}",
+        "onMissing": [
+          [ "https://datasets.carrotsearch.com/arxiv/arxiv-20230308-210000_000.zip" ]
+        ],
+        "unpack": false,
+        "scanZips": true,
+        "matchInsideZip": "*.json"
+      },
+
+      "fieldMapping": {
+        "id": "$.id",
+        "title": "$.title",
+        "abstract": "$.abstract",
+        "author_name": "$.author_name",
+        "author_and_inst": "$.author_and_inst",
+        "created": "$.created",
+        "updated": "$.updated",
+        "set": "$.set",
+        "category": "$.category",
+        "msc": "$.msc",
+        "acm": "$.acm",
+        "doi": "$.doi"
+      }
+    }
+  },
+
+  "dictionaries": {
+    "default": {
+      "type": "glob",
+      "files": [ "${l4g.project.dir}/resources/stoplabels.utf8.txt",
+                 "${l4g.home}/resources/analysis/stoplabels.utf8.txt" ]
+    }
+  },
+
+  "indexer":  {
+    "features": {
+      "phrases": {
+        "type": "phrases",
+        "sourceFields": [ "title", "abstract" ],
+        "targetFields": [ "title", "abstract" ],
+        "minTermDf" : 10,
+        "minPhraseDf" : 15,
+        "maxPhrases": 2000000,
+        "maxPhrasesPerField": 160
+      }
+    },
+    "stopLabelExtractor": {
+      "categoryFields": [ "category", "set", "msc", "acm" ],
+      "featureFields": [
+        "title$phrases",
+        "abstract$phrases"
+      ]
+    },
+    "embedding" : {
+      "labels": {
+        "enabled": "${embeddings:false}",
+        "input" : {
+          "minTopDf" : 20
+        },
+        "model" : {
+          "maxIterations" : 3,
+          "timeout": "12m"
+        }
+      },
+      "documents": {
+        "enabled": "${embeddings:false}"
+      }
+    }
+  },
+
+  "queryParsers":  {
+    "enhanced": {
+      "type":  "enhanced",
+      "defaultFields":  [
+        "title",
+        "abstract"
+      ]
+    }
+  },
+
+  "analysis":  {
+    "labels": {
+      "source": {
+        "fields": [
+          { "name": "title$phrases", "weight": 2.0 },
+          { "name": "abstract$phrases" }
+        ]
+      }
+    }
+  },
+
+  "analysis_v2": {
+    "components": {
+      "fields": {
+        "type": "featureFields:simple",
+        "fields": [
+          "title$phrases",
+          "abstract$phrases"
+        ]
+      },
+      "contentFields": {
+        "type": "contentFields:simple",
+        "fields": {
+          "id": {},
+          "title": {},
+          "abstract": {},
+          "category": {}
+        }
+      },
+      "labelFilter": {
+        "type": "labelFilter:autoStopLabels"
+      }
+    }
+  }
+}
