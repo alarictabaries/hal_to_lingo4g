@@ -31,7 +31,7 @@ for doc in docs:
 
         # si les champs sont dans la bonne langue, alors on ajoute au fichier .json
         if title_lang == dump_language and abstract_lang == dump_language:
-            all_docs.append({"title": doc["_source"][dump_language + "_title_s"], "abstract": doc["_source"][dump_language + "_abstract_s"],
+            all_docs.append({"title": doc["_source"][dump_language + "_title_s"].replace("'", " "), "abstract": doc["_source"][dump_language + "_abstract_s"].replace("'", " "),
                              "created": doc["_source"]["date"],
                              "author_and_inst": [], "author_name": [], "category": [], "set" : "",
                              "id": doc["_id"]}) # à changer pour le dump depuis la véritable instance ES

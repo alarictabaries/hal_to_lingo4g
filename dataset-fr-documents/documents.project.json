@@ -1,7 +1,7 @@
 {
   "fields": {
-    "title":           { "analyzer": "english" },
-    "abstract":        { "analyzer": "english" },
+    "title":           { "analyzer": "french" },
+    "abstract":        { "analyzer": "french" },
 
     "author_name":     { "analyzer": "person" },
     "author_and_inst": { "analyzer": "person" },
@@ -19,6 +19,12 @@
   },
 
   "analyzers" : {
+    "french": {
+        "type": "english",
+        "stopwords" : [ "${l4g.project.dir}/resources/stopwords-fr.txt" ],
+        "useHeuristicStemming": false,
+        "stemmerDictionary": []
+    },
     "enum_text": {
       "type" : "english",
       "requireResources" : true,
