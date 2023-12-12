@@ -21,7 +21,7 @@
   "analyzers" : {
     "french": {
         "type": "english",
-        "stopwords" : [ "${l4g.project.dir}/resources/stopwords-fr.txt" ],
+        "stopwords" : [ ],
         "useHeuristicStemming": false,
         "stemmerDictionary": []
     },
