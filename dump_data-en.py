@@ -1,14 +1,26 @@
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import scan
 import json
-from langdetect import detect
 import datetime
-
-# Load model directly
+import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 tokenizer = AutoTokenizer.from_pretrained("Helsinki-NLP/opus-mt-fr-en")
 model = AutoModelForSeq2SeqLM.from_pretrained("Helsinki-NLP/opus-mt-fr-en")
+
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+tokenizer2 = AutoTokenizer.from_pretrained("DunnBC22/distilbert-base-multilingual-cased-language_detection")
+model2 = AutoModelForSequenceClassification.from_pretrained("DunnBC22/distilbert-base-multilingual-cased-language_detection")
+
+def detect_lang(text):
+    inputs = tokenizer2(text, return_tensors="pt", max_length=512, truncation=True)
+
+    with torch.no_grad():
+        logits = model2(**inputs).logits
+
+    predicted_id = torch.argmax(logits, dim=-1).item()
+    return model2.config.id2label[predicted_id]
 
 def translate_fr_en(text):
     input_ids = tokenizer.encode(text, return_tensors="pt", max_length=512, truncation=True)
@@ -19,12 +31,22 @@ def translate_fr_en(text):
 # traduction ? https://pypi.org/project/deep-translator/
 es = Elasticsearch(hosts="http://elastic:changeme@localhost:9200/")
 
+query = {
+    "query": {
+        "terms": {
+            "_id": ["1147500"]
+        }
+    }
+}
 
 all_docs = []
-docs = scan(es, index="hal-nlp", query={"query": {"match_all": {}}}, scroll='1h')
+debug = False
+if debug:
+    docs = scan(es, index="hal-nlp", query=query, scroll='1h')
+else:
+    docs = scan(es, index="hal-nlp", query={"query": {"match_all": {}}}, scroll='1h')
 for doc in docs:
     if len(all_docs) % 100 == 0:
-        # affiche l'heure et le nombre de documents traités
         print(datetime.datetime.now(), len(all_docs))
     title_status = 0
     title = ""
@@ -33,8 +55,8 @@ for doc in docs:
     if doc["_source"]["en_title_s"] != "":
         if len(doc["_source"]["en_title_s"]) > 2:
             try:
-                title_lang = detect(doc["_source"]["en_title_s"])
-                if title_lang == "en":
+                title_lang = detect_lang(doc["_source"]["en_title_s"])
+                if title_lang == "English":
                     title = doc["_source"]["en_title_s"]
                 else:
                     title_status = -1
@@ -47,10 +69,11 @@ for doc in docs:
         if doc["_source"]["fr_title_s"] != "":
             if len(doc["_source"]["fr_title_s"]) > 2:
                 try:
-                    title_lang = detect(doc["_source"]["fr_title_s"])
-                    if title_lang == "fr":
+                    title_lang = detect_lang(doc["_source"]["fr_title_s"])
+                    if title_lang == "French":
                         title = translate_fr_en(doc["_source"]["fr_title_s"])
                     else:
+                        print("!fr_title", end=" > ")
                         print(doc)
                         title_status = -1
                 except Exception as e:
@@ -63,8 +86,8 @@ for doc in docs:
     if doc["_source"]["en_abstract_s"] != "":
         if len(doc["_source"]["en_abstract_s"]) > 2:
             try:
-                abstract_lang = detect(doc["_source"]["en_abstract_s"])
-                if title_lang == "en":
+                abstract_lang = detect_lang(doc["_source"]["en_abstract_s"])
+                if abstract_lang == "English":
                     abstract = doc["_source"]["en_abstract_s"]
                 else:
                     title_status = -1
@@ -77,10 +100,11 @@ for doc in docs:
         if doc["_source"]["fr_abstract_s"] != "":
             if len(doc["_source"]["fr_abstract_s"]) > 2:
                 try:
-                    abstract_lang = detect(doc["_source"]["fr_abstract_s"])
-                    if title_lang == "fr":
+                    abstract_lang = detect_lang(doc["_source"]["fr_abstract_s"])
+                    if abstract_lang == "French":
                         abstract = translate_fr_en(doc["_source"]["fr_abstract_s"])
                     else:
+                        print("!fr_abstract", end=" > ")
                         print(doc)
                         title_status = -1
                 except Exception as e:
