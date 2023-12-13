@@ -142,7 +142,10 @@ for doc in docs:
             else:
                 abstract = ""
     if title_status == 0 and abstract_status == 0:
-        print(doc)
+        print("current doc", end=" >")
+        for key in ["en_title_s", "en_abstract_s", "fr_title_s", "fr_abstract_s"]:
+            if key in doc["_source"]:
+                print(f"{key}: {doc['_source'][key]}")
         print(">>>")
         print(title, abstract)
         all_docs.append({"title": title, "abstract": abstract,
